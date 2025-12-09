@@ -14,7 +14,6 @@ import {
 
 import { convertBodyToObject, getBodyTypeFromBody } from "../extension/request";
 
-// --- Helper: load-balanced list ---
 function makeLoadbalancedList(getter: () => string[]) {
   let listIndex = -1;
   return () => {
@@ -29,8 +28,8 @@ function makeLoadbalancedList(getter: () => string[]) {
 }
 
 export const getLoadbalancedProxyUrl = makeLoadbalancedList(getProxyUrls);
-export const getLoadbalancedProviderApiUrl = makeLoadbalancedList(getProviderApiUrls);
-
+export const getLoadbalancedProviderApiUrl =
+  makeLoadbalancedList(getProviderApiUrls);
 function getEnabledM3U8ProxyUrls() {
   const allM3U8ProxyUrls = getM3U8ProxyUrls();
   const enabledProxies = localStorage.getItem("m3u8-proxy-enabled");
@@ -55,7 +54,7 @@ export const getLoadbalancedM3U8ProxyUrl = makeLoadbalancedList(
 
 async function fetchButWithApiTokens(
   input: RequestInfo | URL,
-  init?: RequestInit,
+  init?: RequestInit | undefined,
 ): Promise<Response> {
   const apiToken = await getApiToken();
   const headers = new Headers(init?.headers);
