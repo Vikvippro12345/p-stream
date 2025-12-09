@@ -36,6 +36,7 @@ export function getProviders() {
 export function getAllProviders() {
   return makeProviders({
     fetcher: makeStandardFetcher(fetch),
+    proxiedFetcher: makeExtensionFetcher(),
     target: targets.BROWSER_EXTENSION,
     consistentIpForRequests: true,
   });
