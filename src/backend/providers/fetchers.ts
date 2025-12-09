@@ -1,3 +1,4 @@
+// p-stream/src/backend/providers/fetchers.ts
 import {
   Fetcher,
   makeSimpleProxyFetcher,
@@ -14,6 +15,7 @@ import {
 
 import { convertBodyToObject, getBodyTypeFromBody } from "../extension/request";
 
+// --- Helper: load-balanced list ---
 function makeLoadbalancedList(getter: () => string[]) {
   let listIndex = -1;
   return () => {
@@ -28,20 +30,20 @@ function makeLoadbalancedList(getter: () => string[]) {
 }
 
 export const getLoadbalancedProxyUrl = makeLoadbalancedList(getProxyUrls);
-export const getLoadbalancedProviderApiUrl =
-  makeLoadbalancedList(getProviderApiUrls);
+export const getLoadbalancedProviderApiUrl = makeLoadbalancedList(
+  getProviderApiUrls
+);
+
 function getEnabledM3U8ProxyUrls() {
   const allM3U8ProxyUrls = getM3U8ProxyUrls();
   const enabledProxies = localStorage.getItem("m3u8-proxy-enabled");
 
-  if (!enabledProxies) {
-    return allM3U8ProxyUrls;
-  }
+  if (!enabledProxies) return allM3U8ProxyUrls;
 
   try {
     const enabled = JSON.parse(enabledProxies);
     return allM3U8ProxyUrls.filter(
-      (_url, index) => enabled[index.toString()] !== false,
+      (_url, index) => enabled[index.toString()] !== false
     );
   } catch {
     return allM3U8ProxyUrls;
@@ -49,12 +51,13 @@ function getEnabledM3U8ProxyUrls() {
 }
 
 export const getLoadbalancedM3U8ProxyUrl = makeLoadbalancedList(
-  getEnabledM3U8ProxyUrls,
+  getEnabledM3U8ProxyUrls
 );
 
+// --- Fetch wrapper with API tokens ---
 async function fetchButWithApiTokens(
   input: RequestInfo | URL,
-  init?: RequestInit | undefined,
+  init?: RequestInit
 ): Promise<Response> {
   const apiToken = await getApiToken();
   const headers = new Headers(init?.headers);
@@ -66,43 +69,45 @@ async function fetchButWithApiTokens(
           ...init,
           headers,
         }
-      : undefined,
+      : undefined
   );
   const newApiToken = response.headers.get("X-Token");
   if (newApiToken) setApiToken(newApiToken);
   return response;
 }
 
+// --- Setup M3U8 proxy ---
 export function setupM3U8Proxy() {
   const proxyUrl = getLoadbalancedM3U8ProxyUrl();
-  if (proxyUrl) {
-    setM3U8ProxyUrl(proxyUrl);
-  }
+  if (proxyUrl) setM3U8ProxyUrl(proxyUrl);
 }
 
+// --- Load-balanced proxy fetcher ---
 export function makeLoadBalancedSimpleProxyFetcher() {
   const fetcher: Fetcher = async (a, b) => {
     const currentFetcher = makeSimpleProxyFetcher(
       getLoadbalancedProxyUrl(),
-      fetchButWithApiTokens,
+      fetchButWithApiTokens
     );
     return currentFetcher(a, b);
   };
   return fetcher;
 }
 
+// --- Helper to normalize headers ---
 function makeFinalHeaders(
   readHeaders: string[],
-  headers: Record<string, string>,
+  headers: Record<string, string>
 ): Headers {
   const lowercasedHeaders = readHeaders.map((v) => v.toLowerCase());
   return new Headers(
     Object.entries(headers).filter((entry) =>
-      lowercasedHeaders.includes(entry[0].toLowerCase()),
-    ),
+      lowercasedHeaders.includes(entry[0].toLowerCase())
+    )
   );
 }
 
+// --- Extension fetcher (bypasses CORS / Cloudflare via extension) ---
 export function makeExtensionFetcher() {
   const fetcher: Fetcher = async (url, ops) => {
     const result = await sendExtensionRequest<any>({
